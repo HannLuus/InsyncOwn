@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InsyncOwn</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div>
+          <h1>InsyncOwn</h1>
+          <p class="sub">Google Drive selective two-way sync for Linux</p>
+        </div>
+        <div class="top-actions">
+          <span id="runState" class="pill">…</span>
+          <button id="btnPause" type="button">Pause</button>
+          <button id="btnResume" type="button" class="secondary">Resume</button>
+          <button id="btnSyncAll" type="button" class="secondary">Sync now</button>
+        </div>
+      </header>
+
+      <section class="card" id="authCard">
+        <h2>Google Drive account</h2>
+        <p id="authMessage">Checking connection…</p>
+        <div class="row">
+          <button id="btnConnect" type="button">Connect Google Drive</button>
+          <button id="btnRefreshAuth" type="button" class="secondary">Refresh</button>
+        </div>
+        <details class="oauth-advanced">
+          <summary>Advanced: own OAuth client (recommended for shipping)</summary>
+          <div class="row wrap">
+            <input id="clientId" type="text" placeholder="Google OAuth client ID" />
+            <input
+              id="clientSecret"
+              type="password"
+              placeholder="Google OAuth client secret"
+            />
+            <button id="btnSaveOauth" type="button" class="secondary">Save client</button>
+          </div>
+        </details>
+        <p id="quotaLine" class="muted"></p>
+      </section>
+
+      <section class="card">
+        <div class="row between">
+          <h2>Sync pairs</h2>
+          <button id="btnAddPair" type="button">Add folder pair</button>
+        </div>
+        <div id="pairs" class="pairs"></div>
+      </section>
+
+      <section class="card hidden" id="addPairCard">
+        <h2>Add sync pair</h2>
+        <label>
+          Name
+          <input id="pairName" type="text" placeholder="Projects" />
+        </label>
+        <label>
+          Remote folder path (under Drive root)
+          <div class="row">
+            <input
+              id="remotePath"
+              type="text"
+              placeholder="01_Projects"
+            />
+            <button id="btnBrowseRemote" type="button" class="secondary">
+              List root
+            </button>
+          </div>
+        </label>
+        <div id="remoteList" class="remote-list"></div>
+        <label>
+          Local folder
+          <div class="row">
+            <input id="localPath" type="text" placeholder="/home/you/Sync/Projects" />
+            <button id="btnBrowseLocal" type="button" class="secondary">Browse…</button>
+          </div>
+        </label>
+        <label class="check">
+          <input id="runResync" type="checkbox" checked />
+          Run first full resync now (required once; makes both sides match)
+        </label>
+        <div class="row">
+          <button id="btnCreatePair" type="button">Create & sync</button>
+          <button id="btnCancelPair" type="button" class="secondary">Cancel</button>
+        </div>
+        <p class="warn">
+          First resync establishes a baseline. Prefer an empty local folder or a
+          folder that already matches Drive. Use Sync now afterward for ongoing
+          two-way updates.
+        </p>
+      </section>
+
+      <footer class="foot">
+        <span id="appInfo"></span>
+        <span id="globalError" class="error"></span>
+      </footer>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "name": "insyncown",
+  "version": "0.1.0",
+  "private": true,
+  "description": "InsyncOwn Electron tray and settings UI",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
+    "start": "electron .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pack:linux": "electron-builder --linux AppImage deb"
+  },
+  "dependencies": {
+    "@insyncown/shared": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "37.10.3",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.8.3"
+  },
+  "author": "InsyncOwn <dev@insyncown.local>",
+  "homepage": "https://github.com/insyncown/insyncown",
+  "build": {
+    "appId": "com.insyncown.app",
+    "productName": "InsyncOwn",
+    "electronVersion": "37.10.3",
+    "directories": {
+      "output": "../../release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../packaging/systemd/insyncown-daemon.service",
+        "to": "systemd/insyncown-daemon.service"
+      }
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Network",
+      "executableName": "insyncown",
+      "maintainer": "InsyncOwn <dev@insyncown.local>",
+      "description": "InsyncOwn syncs selected Google Drive folders to your Linux machine with true local copies and a background daemon."
+    },
+    "deb": {
+      "packageCategory": "net"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+release/
+*.log
+.DS_Store
+.env
+.env.local
+*.tsbuildinfo
+.vite/
+apps/desktop/dist-electron/
+packaging/rclone/
+*.AppImage
+*.deb
+.cache/

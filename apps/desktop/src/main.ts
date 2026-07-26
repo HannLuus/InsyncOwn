@@ -1,0 +1,239 @@
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  nativeImage,
+  ipcMain,
+  dialog,
+  shell,
+} from "electron";
+import { spawn, type ChildProcess } from "node:child_process";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { APP_NAME, APP_VERSION } from "@insyncown/shared";
+import * as daemon from "./daemon-client.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let daemonProc: ChildProcess | null = null;
+let quitting = false;
+
+function staticPath(...parts: string[]): string {
+  return join(__dirname, "static", ...parts);
+}
+
+function daemonEntry(): string {
+  // Dev: workspace package. Packaged: extraResources.
+  const candidates = [
+    join(app.getAppPath(), "..", "..", "packages", "daemon", "dist", "cli.js"),
+    join(process.resourcesPath, "daemon", "cli.js"),
+    join(__dirname, "..", "..", "..", "packages", "daemon", "dist", "cli.js"),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return candidates[0];
+}
+
+async function ensureDaemon(): Promise<void> {
+  if (await daemon.pingDaemon()) return;
+  if (process.env.INSYNCOWN_EXTERNAL_DAEMON === "1") {
+    console.error(
+      "Daemon not reachable. Start: systemctl --user start insyncown-daemon",
+    );
+    return;
+  }
+  const entry = daemonEntry();
+  if (!existsSync(entry)) {
+    console.error("Daemon entry not found:", entry);
+    return;
+  }
+  mkdirSync(join(app.getPath("home"), ".local", "share", "insyncown"), {
+    recursive: true,
+  });
+  daemonProc = spawn(process.execPath, [entry], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    stdio: "ignore",
+    detached: false,
+  });
+  daemonProc.on("exit", (code) => {
+    console.log("Daemon exited", code);
+    daemonProc = null;
+  });
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    if (await daemon.pingDaemon()) return;
+  }
+  console.error("Daemon failed to become ready");
+}
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 920,
+    height: 680,
+    minWidth: 720,
+    minHeight: 520,
+    title: APP_NAME,
+    webPreferences: {
+      preload: join(__dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  void mainWindow.loadFile(staticPath("index.html"));
+  mainWindow.on("close", (e) => {
+    if (!quitting) {
+      e.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+}
+
+function trayIcon(): Electron.NativeImage {
+  // Simple generated icon (16x16 blue square) — packaging can replace later.
+  const size = 16;
+  const buf = Buffer.alloc(size * size * 4);
+  for (let i = 0; i < size * size; i++) {
+    buf[i * 4] = 30;
+    buf[i * 4 + 1] = 120;
+    buf[i * 4 + 2] = 200;
+    buf[i * 4 + 3] = 255;
+  }
+  return nativeImage.createFromBuffer(buf, { width: size, height: size });
+}
+
+async function refreshTrayMenu(): Promise<void> {
+  if (!tray) return;
+  let statusLabel = "Daemon offline";
+  let paused = false;
+  try {
+    const status = await daemon.getStatus();
+    paused = status.runState === "paused";
+    const ok = status.pairs.filter((p) => p.status === "ok").length;
+    const err = status.pairs.filter(
+      (p) => p.status === "error" || p.status === "conflict",
+    ).length;
+    statusLabel = `${status.runState} · ${status.pairs.length} pairs · ${ok} ok` +
+      (err ? ` · ${err} issues` : "");
+  } catch {
+    /* ignore */
+  }
+
+  const menu = Menu.buildFromTemplate([
+    { label: `${APP_NAME} ${APP_VERSION}`, enabled: false },
+    { label: statusLabel, enabled: false },
+    { type: "separator" },
+    {
+      label: "Open InsyncOwn",
+      click: () => {
+        if (!mainWindow) createWindow();
+        mainWindow?.show();
+        mainWindow?.focus();
+      },
+    },
+    {
+      label: paused ? "Resume sync" : "Pause sync",
+      click: () => {
+        void (paused ? daemon.resume() : daemon.pause()).then(() =>
+          refreshTrayMenu(),
+        );
+      },
+    },
+    {
+      label: "Sync now",
+      click: () => {
+        void daemon.syncNow().then(() => refreshTrayMenu());
+      },
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        quitting = true;
+        app.quit();
+      },
+    },
+  ]);
+  tray.setContextMenu(menu);
+  tray.setToolTip(`${APP_NAME}: ${statusLabel}`);
+}
+
+function createTray(): void {
+  tray = new Tray(trayIcon());
+  tray.on("click", () => {
+    if (!mainWindow) createWindow();
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+  void refreshTrayMenu();
+  setInterval(() => void refreshTrayMenu(), 15_000);
+}
+
+function registerIpc(): void {
+  ipcMain.handle("daemon:getStatus", () => daemon.getStatus());
+  ipcMain.handle("daemon:pause", () => daemon.pause());
+  ipcMain.handle("daemon:resume", () => daemon.resume());
+  ipcMain.handle("daemon:authStatus", () => daemon.authStatus());
+  ipcMain.handle("daemon:startAuth", () => daemon.startAuth());
+  ipcMain.handle(
+    "daemon:configureAuth",
+    (_e, clientId?: string, clientSecret?: string) =>
+      daemon.configureAuth(clientId, clientSecret),
+  );
+  ipcMain.handle("daemon:listRemoteFolders", (_e, path?: string) =>
+    daemon.listRemoteFolders(path ?? ""),
+  );
+  ipcMain.handle(
+    "daemon:addPair",
+    (
+      _e,
+      input: {
+        name: string;
+        localPath: string;
+        remotePath: string;
+        runResync?: boolean;
+      },
+    ) => daemon.addPair(input),
+  );
+  ipcMain.handle("daemon:removePair", (_e, id: string) => daemon.removePair(id));
+  ipcMain.handle("daemon:setPairEnabled", (_e, id: string, enabled: boolean) =>
+    daemon.setPairEnabled(id, enabled),
+  );
+  ipcMain.handle("daemon:syncNow", (_e, id?: string) => daemon.syncNow(id));
+  ipcMain.handle("daemon:resyncPair", (_e, id: string) => daemon.resyncPair(id));
+  ipcMain.handle("dialog:pickLocalFolder", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    return result.filePaths[0];
+  });
+  ipcMain.handle("shell:openPath", (_e, path: string) => shell.openPath(path));
+  ipcMain.handle("app:getInfo", () => ({
+    name: APP_NAME,
+    version: APP_VERSION,
+    daemonUrl: daemon.daemonBaseUrl(),
+  }));
+}
+
+app.whenReady().then(async () => {
+  registerIpc();
+  await ensureDaemon();
+  createTray();
+  createWindow();
+});
+
+app.on("window-all-closed", () => {
+  // Keep tray / daemon running on Linux
+});
+
+app.on("before-quit", () => {
+  quitting = true;
+  // Leave systemd-managed daemon alone; only kill UI-spawned child.
+  if (daemonProc && !process.env.INSYNCOWN_EXTERNAL_DAEMON) {
+    daemonProc.kill("SIGTERM");
+  }
+});

@@ -1,0 +1,15 @@
+[Unit]
+Description=InsyncOwn Google Drive sync daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env node %h/projects/InsyncOwn/packages/daemon/dist/cli.js
+Restart=on-failure
+RestartSec=5
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+Environment=INSYNCOWN_EXTERNAL_DAEMON=1
+
+[Install]
+WantedBy=default.target
