@@ -18,7 +18,8 @@
     "start:daemon": "npm run start -w @insyncown/daemon",
     "start:desktop": "npm run start -w insyncown",
     "typecheck": "npm run typecheck -w @insyncown/shared && npm run typecheck -w @insyncown/daemon && npm run typecheck -w insyncown",
-    "pack:linux": "npm run build && npm run pack:linux -w insyncown",
+    "pack:linux": "npm run build && npm run pack:deb -w insyncown",
+    "pack:deb": "npm run build && npm run pack:deb -w insyncown",
     "install:systemd": "bash packaging/install-systemd-user.sh",
     "install:desktop": "bash packaging/install-desktop-autostart.sh"
   },

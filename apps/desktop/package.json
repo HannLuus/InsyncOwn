@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
     "start": "electron .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "pack:linux": "electron-builder --linux AppImage deb"
+    "pack:linux": "electron-builder --linux deb",
+    "pack:deb": "electron-builder --linux deb"
   },
   "dependencies": {
     "@insyncown/shared": "0.1.0"
@@ -40,14 +41,15 @@
       }
     ],
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": ["deb"],
       "category": "Network",
       "executableName": "insyncown",
       "maintainer": "InsyncOwn <dev@insyncown.local>",
       "description": "InsyncOwn syncs selected Google Drive folders to your Linux machine with true local copies and a background daemon."
     },
     "deb": {
-      "packageCategory": "net"
+      "packageCategory": "net",
+      "priority": "optional"
     }
   }
 }

@@ -1,15 +1,14 @@
-name: Build Linux
+name: Build Debian
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
-  linux:
-    runs-on: ubuntu-22.04
+  deb:
+    name: Ubuntu/Debian .deb
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,17 +25,14 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Package AppImage + deb
-        run: npm run pack:linux -w insyncown
+      - name: Package .deb
+        run: npm run pack:deb -w insyncown
         env:
-          # CI packaging; skip publish
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload installers
+      - name: Upload .deb
         uses: actions/upload-artifact@v4
         with:
-          name: insyncown-linux
-          path: |
-            release/*.AppImage
-            release/*.deb
+          name: insyncown-amd64-deb
+          path: release/*.deb
           if-no-files-found: error

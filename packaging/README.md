@@ -14,12 +14,17 @@ npm run start:desktop                          # open UI now
 Daemon unit: `~/.config/systemd/user/insyncown-daemon.service`  
 Desktop/autostart: `~/.local/share/applications/insyncown.desktop`
 
-## Linux installers
+## Debian / Ubuntu installer (primary)
+
+Target for dogfood: **Ubuntu 26.04** via `.deb`.
 
 ```bash
-npm run pack:linux
-# → release/InsyncOwn-*.AppImage
-# → release/insyncown_*.deb
+npm run pack:deb
+# → release/insyncown_*_amd64.deb
+
+sudo apt install ./release/insyncown_*_amd64.deb
 ```
 
-The AppImage/deb ship the Electron UI. Keep the sync daemon managed by systemd (`npm run install:systemd`) so sync continues when the UI is closed — matching the product architecture (UI ≠ sync engine).
+GitHub Actions (`Build Debian`) uploads that same `.deb` as an artifact.
+
+The `.deb` ships the Electron UI. Keep the sync daemon managed by systemd (`npm run install:systemd`) so sync continues when the UI is closed.
