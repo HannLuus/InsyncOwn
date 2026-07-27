@@ -23,9 +23,12 @@ Install the **highest version number** from [GitHub Releases](https://github.com
 - Daemon install script validates bundled `rclone.exe` and uses reliable log append
 - Release workflow title no longer doubles the `v` prefix (`InsyncOwn v0.1.1`)
 - `npm run build` no longer fails when version is already synced
+- Desktop entries no longer use the file-manager `folder-remote` icon
 
 ### Added
 
+- App identity: real InsyncOwn icon (sync-loop + folder) for launcher, window, tray, and installers
+- Self-contained Linux `.deb`: bundled daemon, systemd user unit installed to `/usr/lib/systemd/user/`, `rclone` as Recommends, chrome-sandbox SUID fix in postinst
 - Windows port: NSIS installer (`InsyncOwn-<version>-win64.exe`), bundled daemon + rclone.exe, Task Scheduler daemon, CI build workflow
 - OS-specific config paths (`%APPDATA%` / `%LOCALAPPDATA%` on Windows)
 - [docs/WINDOWS.md](docs/WINDOWS.md) install guide and smoke test script

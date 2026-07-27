@@ -18,12 +18,20 @@ Desktop/autostart: `~/.local/share/applications/insyncown.desktop`
 
 Target for dogfood: **Ubuntu 26.04** via `.deb`.
 
+The `.deb` is self-contained: Electron UI, bundled sync daemon, app icon, and a
+systemd user unit. `rclone` is a Recommends dependency (apt installs it by default).
+
 ```bash
 npm run pack:deb
-# → release/InsyncOwn-<version>-amd64.deb  (e.g. InsyncOwn-0.1.1-amd64.deb)
+# → release/InsyncOwn-<version>-amd64.deb
 
 sudo apt install ./release/InsyncOwn-0.1.1-amd64.deb
+
+# Recommended: run sync in the background even when the UI is closed
+systemctl --user enable --now insyncown-daemon
 ```
+
+Without the systemd unit, the UI starts its own daemon child (sync stops when the UI quits).
 
 **Install from [GitHub Releases](https://github.com/HannLuus/InsyncOwn/releases)** — not CI artifacts. See [docs/RELEASES.md](../docs/RELEASES.md).
 

@@ -1,0 +1,15 @@
+[Unit]
+Description=InsyncOwn Google Drive sync daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=ELECTRON_RUN_AS_NODE=1
+Environment=INSYNCOWN_RESOURCES=/opt/InsyncOwn/resources
+ExecStart=/opt/InsyncOwn/insyncown /opt/InsyncOwn/resources/daemon-bundle/cli.mjs
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

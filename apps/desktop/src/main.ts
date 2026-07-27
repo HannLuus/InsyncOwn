@@ -114,12 +114,14 @@ async function ensureDaemon(): Promise<void> {
 }
 
 function createWindow(): void {
+  const windowIcon = staticPath("icons", "icon-256.png");
   mainWindow = new BrowserWindow({
     width: 920,
     height: 680,
     minWidth: 720,
     minHeight: 520,
     title: APP_NAME,
+    icon: existsSync(windowIcon) ? windowIcon : undefined,
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -140,7 +142,12 @@ function createWindow(): void {
 }
 
 function trayIcon(): Electron.NativeImage {
-  // Simple generated icon (16x16 blue square) — packaging can replace later.
+  const iconPath = staticPath("icons", "tray.png");
+  if (existsSync(iconPath)) {
+    const img = nativeImage.createFromPath(iconPath);
+    if (!img.isEmpty()) return img;
+  }
+  // Fallback: generated 16x16 blue square
   const size = 16;
   const buf = Buffer.alloc(size * size * 4);
   for (let i = 0; i < size * size; i++) {
