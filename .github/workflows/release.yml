@@ -24,7 +24,9 @@ jobs:
 
       - name: Read version
         id: ver
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Verify tag matches package.json
         run: |
@@ -65,7 +67,9 @@ jobs:
       - name: Read version
         id: ver
         shell: pwsh
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> $env:GITHUB_OUTPUT
+        run: |
+          $version = node -p "require('./package.json').version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Verify tag matches package.json
         shell: pwsh
