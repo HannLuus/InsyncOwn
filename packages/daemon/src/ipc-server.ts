@@ -1,7 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { homedir } from "node:os";
+import { dirname } from "node:path";
 import {
   DAEMON_DEFAULT_HOST,
   DAEMON_DEFAULT_PORT,
@@ -12,6 +11,7 @@ import {
 } from "@insyncown/shared";
 import type { SyncEngine } from "./sync-engine.js";
 import { AuthSession } from "./auth-session.js";
+import { defaultRcloneImportPath } from "./paths.js";
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -198,8 +198,7 @@ export class IpcServer {
       }
       case "importExistingRcloneAuth": {
         const source =
-          request.sourceConfigPath ??
-          join(homedir(), ".config", "rclone", "rclone.conf");
+          request.sourceConfigPath ?? defaultRcloneImportPath();
         importRemoteSection(
           source,
           this.engine.rclone.configPath,

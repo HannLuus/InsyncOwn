@@ -26,8 +26,8 @@ function staticPath(...parts: string[]): string {
 }
 
 function daemonEntry(): string {
-  // Dev: workspace package. Packaged: extraResources.
   const candidates = [
+    join(process.resourcesPath, "daemon-bundle", "cli.mjs"),
     join(app.getAppPath(), "..", "..", "packages", "daemon", "dist", "cli.js"),
     join(process.resourcesPath, "daemon", "cli.js"),
     join(__dirname, "..", "..", "..", "packages", "daemon", "dist", "cli.js"),
@@ -38,12 +38,57 @@ function daemonEntry(): string {
   return candidates[0];
 }
 
+function insyncOwnDataDir(): string {
+  if (process.platform === "win32") {
+    const local = process.env.LOCALAPPDATA;
+    if (local) return join(local, "InsyncOwn");
+    return join(app.getPath("home"), "AppData", "Local", "InsyncOwn");
+  }
+  return join(app.getPath("home"), ".local", "share", "insyncown");
+}
+
+function daemonEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+  };
+  if (process.resourcesPath) {
+    env.INSYNCOWN_RESOURCES = process.resourcesPath;
+    const bundledRclone = join(process.resourcesPath, "rclone", "rclone.exe");
+    if (existsSync(bundledRclone)) {
+      env.INSYNCOWN_RCLONE = bundledRclone;
+    }
+  }
+  return env;
+}
+
+function usesExternalDaemon(): boolean {
+  if (process.env.INSYNCOWN_EXTERNAL_DAEMON === "1") return true;
+  // Packaged Windows installs register the daemon via Task Scheduler.
+  return process.platform === "win32" && app.isPackaged;
+}
+
 async function ensureDaemon(): Promise<void> {
+  const external = usesExternalDaemon();
+  const maxAttempts = external ? 120 : 40;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    if (await daemon.pingDaemon()) return;
+    if (external) {
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
+    break;
+  }
+
   if (await daemon.pingDaemon()) return;
-  if (process.env.INSYNCOWN_EXTERNAL_DAEMON === "1") {
-    console.error(
-      "Daemon not reachable. Start: systemctl --user start insyncown-daemon",
-    );
+
+  if (external) {
+    const hint =
+      process.platform === "win32"
+        ? "Daemon not reachable. Check Task Scheduler task InsyncOwnDaemon and %LOCALAPPDATA%\\InsyncOwn\\logs\\daemon.log"
+        : "Daemon not reachable. Start: systemctl --user start insyncown-daemon";
+    console.error(hint);
     return;
   }
   const entry = daemonEntry();
@@ -51,11 +96,9 @@ async function ensureDaemon(): Promise<void> {
     console.error("Daemon entry not found:", entry);
     return;
   }
-  mkdirSync(join(app.getPath("home"), ".local", "share", "insyncown"), {
-    recursive: true,
-  });
+  mkdirSync(insyncOwnDataDir(), { recursive: true });
   daemonProc = spawn(process.execPath, [entry], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    env: daemonEnv(),
     stdio: "ignore",
     detached: false,
   });
@@ -71,12 +114,14 @@ async function ensureDaemon(): Promise<void> {
 }
 
 function createWindow(): void {
+  const windowIcon = staticPath("icons", "icon-256.png");
   mainWindow = new BrowserWindow({
     width: 920,
     height: 680,
     minWidth: 720,
     minHeight: 520,
     title: APP_NAME,
+    icon: existsSync(windowIcon) ? windowIcon : undefined,
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -97,7 +142,12 @@ function createWindow(): void {
 }
 
 function trayIcon(): Electron.NativeImage {
-  // Simple generated icon (16x16 blue square) — packaging can replace later.
+  const iconPath = staticPath("icons", "tray.png");
+  if (existsSync(iconPath)) {
+    const img = nativeImage.createFromPath(iconPath);
+    if (!img.isEmpty()) return img;
+  }
+  // Fallback: generated 16x16 blue square
   const size = 16;
   const buf = Buffer.alloc(size * size * 4);
   for (let i = 0; i < size * size; i++) {
@@ -247,8 +297,8 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   quitting = true;
-  // Leave systemd-managed daemon alone; only kill UI-spawned child.
-  if (daemonProc && !process.env.INSYNCOWN_EXTERNAL_DAEMON) {
+  // Leave systemd / Task Scheduler daemon alone; only kill UI-spawned child.
+  if (daemonProc && !usesExternalDaemon()) {
     daemonProc.kill("SIGTERM");
   }
 });

@@ -10,6 +10,7 @@ release/
 .vite/
 apps/desktop/dist-electron/
 packaging/rclone/
+packaging/bundle/
 *.AppImage
 *.deb
 .cache/

@@ -19,20 +19,21 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - name: Read version
+        id: ver
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
-
-      - name: Package .deb
-        run: npm run pack:deb -w insyncown
+      - name: Build and package .deb
+        run: npm run pack:deb
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload .deb
+      - name: Upload .deb (CI only — install from GitHub Releases)
         uses: actions/upload-artifact@v4
         with:
-          name: insyncown-amd64-deb
-          path: release/*.deb
+          name: InsyncOwn-${{ steps.ver.outputs.version }}-amd64-deb
+          path: release/InsyncOwn-*.deb
           if-no-files-found: error

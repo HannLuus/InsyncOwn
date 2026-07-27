@@ -1,6 +1,6 @@
 {
   "name": "insyncown",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "InsyncOwn Electron tray and settings UI",
   "main": "dist/main.js",
@@ -10,10 +10,12 @@
     "start": "electron . --disable-gpu",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pack:linux": "electron-builder --linux deb",
-    "pack:deb": "electron-builder --linux deb"
+    "pack:deb": "electron-builder --linux deb",
+    "pack:win": "electron-builder --win nsis",
+    "pack:nsis": "electron-builder --win nsis"
   },
   "dependencies": {
-    "@insyncown/shared": "0.1.0"
+    "@insyncown/shared": "0.1.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -22,11 +24,12 @@
     "typescript": "^5.8.3"
   },
   "author": "InsyncOwn <dev@insyncown.local>",
-  "homepage": "https://github.com/insyncown/insyncown",
+  "homepage": "https://github.com/HannLuus/InsyncOwn",
   "build": {
     "appId": "com.insyncown.app",
     "productName": "InsyncOwn",
     "electronVersion": "37.10.3",
+    "artifactName": "InsyncOwn-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "../../release"
     },
@@ -34,22 +37,77 @@
       "dist/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "../../packaging/systemd/insyncown-daemon.service",
-        "to": "systemd/insyncown-daemon.service"
-      }
-    ],
+    "extraResources": [],
     "linux": {
-      "target": ["deb"],
+      "target": [
+        "deb"
+      ],
+      "artifactName": "InsyncOwn-${version}-amd64.${ext}",
       "category": "Network",
       "executableName": "insyncown",
+      "synopsis": "Google Drive selective two-way sync",
       "maintainer": "InsyncOwn <dev@insyncown.local>",
-      "description": "InsyncOwn syncs selected Google Drive folders to your Linux machine with true local copies and a background daemon."
+      "description": "InsyncOwn syncs selected Google Drive folders to your Linux machine with true local copies and a background daemon.",
+      "desktop": {
+        "entry": {
+          "Name": "InsyncOwn",
+          "Comment": "Google Drive selective two-way sync",
+          "Categories": "Network;FileTransfer;",
+          "StartupWMClass": "InsyncOwn"
+        }
+      },
+      "extraResources": [
+        {
+          "from": "../../packaging/bundle/daemon-bundle",
+          "to": "daemon-bundle"
+        },
+        {
+          "from": "../../packaging/linux/systemd/insyncown-daemon.service",
+          "to": "systemd/insyncown-daemon.service"
+        }
+      ]
     },
     "deb": {
       "packageCategory": "net",
-      "priority": "optional"
+      "priority": "optional",
+      "recommends": [
+        "rclone"
+      ],
+      "afterInstall": "../../packaging/linux/deb/after-install.sh",
+      "afterRemove": "../../packaging/linux/deb/after-remove.sh"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "executableName": "InsyncOwn",
+      "extraResources": [
+        {
+          "from": "../../packaging/bundle/daemon-bundle",
+          "to": "daemon-bundle"
+        },
+        {
+          "from": "../../packaging/rclone/win",
+          "to": "rclone",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "../../packaging/windows/scripts",
+          "to": "scripts"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "InsyncOwn",
+      "include": "../../packaging/windows/nsis/installer.nsh",
+      "artifactName": "InsyncOwn-${version}-win64.${ext}"
     }
   }
 }

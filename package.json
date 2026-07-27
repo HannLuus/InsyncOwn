@@ -1,15 +1,19 @@
 {
   "name": "insyncown",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "Sellable Google Drive selective two-way sync for Linux",
+  "description": "Sellable Google Drive selective two-way sync for Linux and Windows",
   "workspaces": [
     "packages/shared",
     "packages/daemon",
     "apps/desktop"
   ],
   "scripts": {
-    "build": "npm run build -w @insyncown/shared && npm run build -w @insyncown/daemon && npm run build -w insyncown",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:patch": "node scripts/bump-version.mjs patch",
+    "version:minor": "node scripts/bump-version.mjs minor",
+    "version:major": "node scripts/bump-version.mjs major",
+    "build": "node scripts/sync-version.mjs && npm run build -w @insyncown/shared && npm run build -w @insyncown/daemon && npm run build -w insyncown",
     "build:shared": "npm run build -w @insyncown/shared",
     "build:daemon": "npm run build -w @insyncown/shared && npm run build -w @insyncown/daemon",
     "build:desktop": "npm run build -w @insyncown/shared && npm run build -w insyncown",
@@ -18,13 +22,18 @@
     "start:daemon": "npm run start -w @insyncown/daemon",
     "start:desktop": "npm run start -w insyncown",
     "typecheck": "npm run typecheck -w @insyncown/shared && npm run typecheck -w @insyncown/daemon && npm run typecheck -w insyncown",
-    "pack:linux": "npm run build && npm run pack:deb -w insyncown",
-    "pack:deb": "npm run build && npm run pack:deb -w insyncown",
+    "pack:linux": "npm run build && node scripts/bundle-daemon.mjs && npm run pack:deb -w insyncown",
+    "pack:deb": "npm run build && node scripts/bundle-daemon.mjs && npm run pack:deb -w insyncown",
+    "pack:win": "npm run build && node scripts/prepare-windows-pack.mjs && npm run pack:nsis -w insyncown",
+    "pack:nsis": "npm run build && node scripts/prepare-windows-pack.mjs && npm run pack:nsis -w insyncown",
     "install:systemd": "bash packaging/install-systemd-user.sh",
     "install:desktop": "bash packaging/install-desktop-autostart.sh"
   },
   "engines": {
     "node": ">=20"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "esbuild": "0.28.1"
+  }
 }

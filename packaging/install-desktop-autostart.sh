@@ -13,9 +13,10 @@ Type=Application
 Name=InsyncOwn
 Comment=Google Drive selective two-way sync
 Exec=/bin/bash -lc 'cd "$ROOT" && INSYNCOWN_EXTERNAL_DAEMON=1 ELECTRON_DISABLE_GPU=1 npm run start:desktop'
-Icon=folder-remote
+Icon=$ROOT/apps/desktop/build/icon.png
 Terminal=false
 Categories=Network;FileTransfer;
+StartupWMClass=InsyncOwn
 EOF
 
 cp "$APP_DIR/insyncown.desktop" "$AUTO_DIR/insyncown.desktop"

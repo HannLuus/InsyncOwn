@@ -1,6 +1,6 @@
 # InsyncOwn
 
-Sellable **Google Drive selective two-way sync** for Linux — true local copies, background daemon, Electron tray UI. Built to compete with Insync at a fairer price.
+Sellable **Google Drive selective two-way sync** for Linux and Windows — true local copies, background daemon, Electron tray UI. Built to compete with Insync at a fairer price.
 
 > Not a FUSE mount. For the personal mount prototype see `~/gdrive-bridge`. This repo is the product.
 
@@ -40,11 +40,27 @@ npm run start:desktop
 
 See [docs/DOGFOOD.md](docs/DOGFOOD.md) and [docs/PRODUCT.md](docs/PRODUCT.md).
 
+## Versioning and releases
+
+- **One version everywhere:** root `package.json` → workspaces → UI/daemon (`APP_VERSION`)
+- **Installer filenames:** `InsyncOwn-0.1.1-amd64.deb` (Linux), `InsyncOwn-0.1.1-win64.exe` (Windows)
+- **Download:** [GitHub Releases](https://github.com/HannLuus/InsyncOwn/releases) — pick the highest version; delete older installers from Downloads
+- **Cut a release:** see [docs/RELEASES.md](docs/RELEASES.md)
+- **Windows install guide:** [docs/WINDOWS.md](docs/WINDOWS.md)
+
+```bash
+npm run version:patch   # after fixes → bumps 0.1.x
+git commit && git tag v0.1.x && git push origin main --tags
+```
+
 ## Packaging
 
 ```bash
 npm run pack:linux
-# outputs under ./release (AppImage + deb)
+# → release/InsyncOwn-<version>-amd64.deb
+
+npm run pack:win
+# → release/InsyncOwn-<version>-win64.exe
 ```
 
 ## Safety

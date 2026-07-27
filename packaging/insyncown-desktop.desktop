@@ -3,8 +3,9 @@ Type=Application
 Name=InsyncOwn
 Comment=Google Drive selective two-way sync
 Exec=env INSYNCOWN_EXTERNAL_DAEMON=1 sh -c 'cd %h/projects/InsyncOwn && npm run start:desktop'
-Icon=folder-remote
+Icon=insyncown
 Terminal=false
 Categories=Network;FileTransfer;
+StartupWMClass=InsyncOwn
 X-GNOME-Autostart-Delay=8
 X-GNOME-Autostart-enabled=true
