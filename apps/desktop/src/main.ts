@@ -81,7 +81,11 @@ function createWindow(): void {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
+  });
+  mainWindow.webContents.on("console-message", (_e, level, message) => {
+    console.log(`[renderer:${level}] ${message}`);
   });
   void mainWindow.loadFile(staticPath("index.html"));
   mainWindow.on("close", (e) => {
@@ -177,11 +181,22 @@ function registerIpc(): void {
   ipcMain.handle("daemon:pause", () => daemon.pause());
   ipcMain.handle("daemon:resume", () => daemon.resume());
   ipcMain.handle("daemon:authStatus", () => daemon.authStatus());
-  ipcMain.handle("daemon:startAuth", () => daemon.startAuth());
+  ipcMain.handle("daemon:startAuth", async () => {
+    const result = await daemon.startAuth();
+    if (result.authUrl) {
+      await shell.openExternal(result.authUrl);
+    }
+    return result;
+  });
   ipcMain.handle(
     "daemon:configureAuth",
     (_e, clientId?: string, clientSecret?: string) =>
       daemon.configureAuth(clientId, clientSecret),
+  );
+  ipcMain.handle(
+    "daemon:importExistingRcloneAuth",
+    (_e, sourceConfigPath?: string) =>
+      daemon.importExistingRcloneAuth(sourceConfigPath),
   );
   ipcMain.handle("daemon:listRemoteFolders", (_e, path?: string) =>
     daemon.listRemoteFolders(path ?? ""),

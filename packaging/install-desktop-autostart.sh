@@ -12,7 +12,7 @@ cat >"$APP_DIR/insyncown.desktop" <<EOF
 Type=Application
 Name=InsyncOwn
 Comment=Google Drive selective two-way sync
-Exec=/bin/bash -lc 'cd "$ROOT" && INSYNCOWN_EXTERNAL_DAEMON=1 npm run start:desktop'
+Exec=/bin/bash -lc 'cd "$ROOT" && INSYNCOWN_EXTERNAL_DAEMON=1 ELECTRON_DISABLE_GPU=1 npm run start:desktop'
 Icon=folder-remote
 Terminal=false
 Categories=Network;FileTransfer;

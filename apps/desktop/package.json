@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
-    "start": "electron .",
+    "start": "electron . --disable-gpu",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pack:linux": "electron-builder --linux deb",
     "pack:deb": "electron-builder --linux deb"

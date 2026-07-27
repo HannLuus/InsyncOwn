@@ -28,8 +28,11 @@
       <section class="card" id="authCard">
         <h2>Google Drive account</h2>
         <p id="authMessage">Checking connection…</p>
-        <div class="row">
+        <div class="row wrap">
           <button id="btnConnect" type="button">Connect Google Drive</button>
+          <button id="btnImportRclone" type="button" class="secondary">
+            Use existing rclone login
+          </button>
           <button id="btnRefreshAuth" type="button" class="secondary">Refresh</button>
         </div>
         <details class="oauth-advanced">

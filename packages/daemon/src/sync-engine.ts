@@ -4,6 +4,7 @@ import chokidar, { type FSWatcher } from "chokidar";
 import type { DaemonStatus, SyncPair } from "@insyncown/shared";
 import { APP_VERSION, RCLONE_REMOTE_NAME } from "@insyncown/shared";
 import { RcloneClient } from "./rclone.js";
+import { clearStaleBisyncLocks, summarizeRcloneFailure } from "./rclone-utils.js";
 import { StateStore } from "./state.js";
 import { bisyncWorkDir, configDir, resolveRclonePath } from "./paths.js";
 
@@ -29,6 +30,7 @@ export class SyncEngine {
     this.started = true;
     this.rclone.ensureConfigStub();
     for (const pair of this.store.listPairs()) {
+      clearStaleBisyncLocks(join(bisyncWorkDir(), pair.id));
       if (pair.enabled) this.watchPair(pair);
     }
     this.pollTimer = setInterval(() => {
@@ -66,8 +68,12 @@ export class SyncEngine {
 
   async enrichStatus(): Promise<DaemonStatus> {
     const status = this.getStatus();
+    // Never let quota lookup freeze the UI/tray (short timeout).
     try {
-      status.account.about = await this.rclone.about();
+      status.account.about = await Promise.race([
+        this.rclone.about(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+      ]);
     } catch (err) {
       status.lastGlobalError =
         err instanceof Error ? err.message : String(err);
@@ -216,6 +222,7 @@ export class SyncEngine {
     const workdir = join(bisyncWorkDir(), id);
     mkdirSync(workdir, { recursive: true });
     mkdirSync(pair.localPath, { recursive: true });
+    clearStaleBisyncLocks(workdir);
 
     try {
       const needResync = opts.resync || !pair.resynced;
@@ -227,12 +234,34 @@ export class SyncEngine {
       });
       const combined = `${result.stdout}\n${result.stderr}`;
       if (result.code !== 0) {
+        // Stale lock race: clear and retry once
+        if (/valid lock file found/i.test(combined)) {
+          clearStaleBisyncLocks(workdir);
+          const retry = await this.rclone.bisync({
+            localPath: pair.localPath,
+            remotePath: pair.remotePath,
+            resync: needResync,
+            workdir,
+          });
+          if (retry.code === 0) {
+            this.store.updatePair(id, {
+              status: "ok",
+              lastError: null,
+              lastSyncAt: new Date().toISOString(),
+              resynced: true,
+            });
+            this.store.setLastGlobalError(null);
+            return { ok: true };
+          }
+          const retryMsg = summarizeRcloneFailure(retry.stdout, retry.stderr, retry.code);
+          const conflict = /conflict/i.test(`${retry.stdout}\n${retry.stderr}`);
+          this.store.setPairStatus(id, conflict ? "conflict" : "error", retryMsg);
+          this.store.setLastGlobalError(retryMsg.slice(0, 500));
+          return { ok: false, error: retryMsg };
+        }
         const conflict = /conflict/i.test(combined);
-        const msg =
-          result.stderr.trim() ||
-          result.stdout.trim() ||
-          `rclone bisync exited with code ${result.code}`;
-        this.store.setPairStatus(id, conflict ? "conflict" : "error", msg.slice(0, 2000));
+        const msg = summarizeRcloneFailure(result.stdout, result.stderr, result.code);
+        this.store.setPairStatus(id, conflict ? "conflict" : "error", msg);
         this.store.setLastGlobalError(msg.slice(0, 500));
         return { ok: false, error: msg };
       }

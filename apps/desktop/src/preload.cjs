@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("insyncown", {
   resume: () => ipcRenderer.invoke("daemon:resume"),
   authStatus: () => ipcRenderer.invoke("daemon:authStatus"),
   startAuth: () => ipcRenderer.invoke("daemon:startAuth"),
+  importExistingRcloneAuth: (sourceConfigPath) =>
+    ipcRenderer.invoke("daemon:importExistingRcloneAuth", sourceConfigPath),
   configureAuth: (clientId, clientSecret) =>
     ipcRenderer.invoke("daemon:configureAuth", clientId, clientSecret),
   listRemoteFolders: (path) => ipcRenderer.invoke("daemon:listRemoteFolders", path),

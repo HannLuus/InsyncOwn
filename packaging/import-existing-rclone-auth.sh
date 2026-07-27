@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copy an existing rclone Google Drive remote into InsyncOwn's config for dogfood.
-# Does not print secrets.
+# Does not print secrets. Never overwrites with an empty stub.
 set -euo pipefail
 
 SRC="${1:-$HOME/.config/rclone/rclone.conf}"
@@ -41,6 +41,8 @@ if not found:
 body = "\n".join(out).strip() + "\n"
 if "type = drive" not in body and "type=drive" not in body:
     body = body.replace(f"[{remote}]", f"[{remote}]\ntype = drive", 1)
+if "token" not in body:
+    raise SystemExit(f"Remote [{remote}] in {src} has no token — cannot import")
 dest.write_text(body, encoding="utf-8")
 print(f"Wrote {dest} from {src} remote [{remote}]")
 print("Restart daemon: systemctl --user restart insyncown-daemon || npm run start:daemon")

@@ -81,38 +81,28 @@ export class RcloneClient {
   }
 
   async configureClientId(clientId: string, clientSecret: string): Promise<void> {
-    this.ensureConfigStub();
-    const r = await this.run([
-      "config",
-      "update",
-      this.remoteName,
-      "client_id",
-      clientId,
-      "client_secret",
-      clientSecret,
-      "scope",
-      "drive",
-    ]);
-    if (r.code !== 0) {
-      // If remote missing, create it
-      const create = await this.run([
-        "config",
-        "create",
-        this.remoteName,
-        "drive",
-        "client_id",
-        clientId,
-        "client_secret",
-        clientSecret,
-        "scope",
-        "drive",
-        "config_is_local",
-        "true",
-      ]);
-      if (create.code !== 0) {
-        throw new Error(create.stderr || create.stdout || "Failed to configure rclone remote");
-      }
+    // Non-interactive: edit config file. Never run `rclone config create`
+    // with ignored stdio (that hangs and can wipe tokens).
+    mkdirSync(dirname(this.configPath), { recursive: true });
+    let text = existsSync(this.configPath)
+      ? readFileSync(this.configPath, "utf8")
+      : "";
+    if (!text.includes(`[${this.remoteName}]`)) {
+      text = `${text.trimEnd()}\n\n[${this.remoteName}]\ntype = drive\nscope = drive\n`;
     }
+    const setKey = (body: string, key: string, value: string): string => {
+      const re = new RegExp(`^${key}\\s*=.*$`, "m");
+      if (re.test(body)) return body.replace(re, `${key} = ${value}`);
+      return body.replace(
+        `[${this.remoteName}]`,
+        `[${this.remoteName}]\n${key} = ${value}`,
+      );
+    };
+    text = setKey(text, "type", "drive");
+    text = setKey(text, "scope", "drive");
+    text = setKey(text, "client_id", clientId);
+    text = setKey(text, "client_secret", clientSecret);
+    writeFileSync(this.configPath, text.trimEnd() + "\n", "utf8");
   }
 
   /**
@@ -198,11 +188,17 @@ export class RcloneClient {
       "insyncown-conflict-{DateOnly}-",
       "--workdir",
       opts.workdir,
+      // Prevent eternal locks after crashes (Media bug: expiry year 2226)
+      "--max-lock",
+      "10m",
+      // Google Drive shortcuts to deleted targets abort bisync otherwise
+      "--drive-skip-dangling-shortcuts",
       "-v",
     ];
     if (opts.resync) {
       args.push("--resync");
     }
-    return this.run(args, { timeoutMs: 60 * 60 * 1000 });
+    // Large first syncs (e.g. media libraries) can exceed 1h
+    return this.run(args, { timeoutMs: opts.resync ? 12 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000 });
   }
 }

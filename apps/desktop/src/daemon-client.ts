@@ -6,21 +6,50 @@ import {
   type IpcRequest,
   type IpcResponse,
   type RemoteFolder,
+  type StartAuthResult,
   type SyncPair,
 } from "@insyncown/shared";
 
 const host = process.env.INSYNCOWN_DAEMON_HOST ?? DAEMON_DEFAULT_HOST;
 const port = Number(process.env.INSYNCOWN_DAEMON_PORT ?? DAEMON_DEFAULT_PORT);
 
+async function rpcOnce<T>(request: IpcRequest, timeoutMs: number): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`http://${host}:${port}/rpc`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal: ctrl.signal,
+    });
+    const body = (await res.json()) as IpcResponse<T>;
+    if (!body.ok) throw new Error(body.error);
+    return body.data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function rpc<T>(request: IpcRequest): Promise<T> {
-  const res = await fetch(`http://${host}:${port}/rpc`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  const body = (await res.json()) as IpcResponse<T>;
-  if (!body.ok) throw new Error(body.error);
-  return body.data;
+  const timeoutMs = request.method === "getStatus" || request.method === "ping" ? 8_000 : 60_000;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await rpcOnce<T>(request, timeoutMs);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 250 * attempt));
+      }
+    }
+  }
+  const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+  throw new Error(
+    msg.includes("abort") || msg.includes("fetch")
+      ? `Daemon not reachable at http://${host}:${port} (${msg})`
+      : msg,
+  );
 }
 
 export async function pingDaemon(): Promise<boolean> {
@@ -48,8 +77,14 @@ export function authStatus(): Promise<AuthStatusResult> {
   return rpc({ method: "authStatus" });
 }
 
-export function startAuth(): Promise<{ started: boolean; message: string }> {
+export function startAuth(): Promise<StartAuthResult> {
   return rpc({ method: "startAuth" });
+}
+
+export function importExistingRcloneAuth(
+  sourceConfigPath?: string,
+): Promise<{ configured: boolean; message: string }> {
+  return rpc({ method: "importExistingRcloneAuth", sourceConfigPath });
 }
 
 export function configureAuth(

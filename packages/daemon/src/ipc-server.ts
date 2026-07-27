@@ -1,15 +1,17 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 import {
   DAEMON_DEFAULT_HOST,
   DAEMON_DEFAULT_PORT,
   type AuthStatusResult,
   type IpcRequest,
   type IpcResponse,
+  type StartAuthResult,
 } from "@insyncown/shared";
 import type { SyncEngine } from "./sync-engine.js";
+import { AuthSession } from "./auth-session.js";
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -29,14 +31,58 @@ function sendJson(res: ServerResponse, status: number, body: IpcResponse): void 
   res.end(payload);
 }
 
+function importRemoteSection(
+  sourcePath: string,
+  destPath: string,
+  remoteName: string,
+): void {
+  if (!existsSync(sourcePath)) {
+    throw new Error(`rclone config not found: ${sourcePath}`);
+  }
+  const text = readFileSync(sourcePath, "utf8");
+  const lines = text.split(/\r?\n/);
+  const out: string[] = [];
+  let inSection = false;
+  let found = false;
+  for (const line of lines) {
+    if (line.startsWith("[") && line.endsWith("]")) {
+      const name = line.slice(1, -1).trim();
+      inSection = name === remoteName;
+      if (inSection) {
+        found = true;
+        out.push(`[${remoteName}]`);
+      }
+      continue;
+    }
+    if (inSection) out.push(line);
+  }
+  if (!found) throw new Error(`Remote [${remoteName}] not found in ${sourcePath}`);
+  let body = `${out.join("\n").trim()}\n`;
+  if (!/type\s*=\s*drive/.test(body)) {
+    body = body.replace(`[${remoteName}]`, `[${remoteName}]\ntype = drive`);
+  }
+  if (!/token\s*=/.test(body)) {
+    throw new Error(`Remote [${remoteName}] has no token in ${sourcePath}`);
+  }
+  mkdirSync(dirname(destPath), { recursive: true });
+  writeFileSync(destPath, body, "utf8");
+}
+
 export class IpcServer {
   private server: Server | null = null;
+  private readonly authSession: AuthSession;
 
   constructor(
     private readonly engine: SyncEngine,
     private readonly host = DAEMON_DEFAULT_HOST,
     private readonly port = Number(process.env.INSYNCOWN_DAEMON_PORT ?? DAEMON_DEFAULT_PORT),
-  ) {}
+  ) {
+    this.authSession = new AuthSession(
+      engine.rclone.bin,
+      engine.rclone.configPath,
+      engine.rclone.remoteName,
+    );
+  }
 
   async start(): Promise<{ host: string; port: number }> {
     this.server = createServer((req, res) => {
@@ -50,6 +96,7 @@ export class IpcServer {
   }
 
   async stop(): Promise<void> {
+    this.authSession.cancel();
     if (!this.server) return;
     await new Promise<void>((resolve) => {
       this.server!.close(() => resolve());
@@ -142,46 +189,31 @@ export class IpcServer {
         }
         return {
           configured: this.engine.rclone.isRemoteConfigured(),
-          message: "Config updated. Use startAuth to complete browser login.",
+          message: "Config updated. Use Connect Google Drive to complete browser login.",
         };
       }
       case "startAuth": {
-        // Spawn helper in a new terminal-friendly process with inherited stdio when possible.
-        // For GUI: run rclone config reconnect detached and return instructions.
-        const result = await this.runAuthHelper();
+        const result: StartAuthResult = await this.authSession.start();
         return result;
+      }
+      case "importExistingRcloneAuth": {
+        const source =
+          request.sourceConfigPath ??
+          join(homedir(), ".config", "rclone", "rclone.conf");
+        importRemoteSection(
+          source,
+          this.engine.rclone.configPath,
+          this.engine.rclone.remoteName,
+        );
+        return {
+          configured: this.engine.rclone.isRemoteConfigured(),
+          message: "Imported existing rclone Google Drive login.",
+        };
       }
       default: {
         const _exhaustive: never = request;
         throw new Error(`Unknown method: ${JSON.stringify(_exhaustive)}`);
       }
     }
-  }
-
-  private async runAuthHelper(): Promise<{ started: boolean; message: string }> {
-    this.engine.rclone.ensureConfigStub();
-    const here = dirname(fileURLToPath(import.meta.url));
-    const helper = join(here, "auth-helper.js");
-    // Run rclone authorize/reconnect in background; user completes in browser.
-    const child = spawn(
-      process.execPath,
-      [helper],
-      {
-        detached: true,
-        stdio: "ignore",
-        env: {
-          ...process.env,
-          INSYNCOWN_RCLONE: this.engine.rclone.bin,
-          RCLONE_CONFIG: this.engine.rclone.configPath,
-          INSYNCOWN_REMOTE: this.engine.rclone.remoteName,
-        },
-      },
-    );
-    child.unref();
-    return {
-      started: true,
-      message:
-        "Browser authorization started. Complete the Google login window, then refresh status.",
-    };
   }
 }

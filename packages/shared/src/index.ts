@@ -83,7 +83,8 @@ export type IpcRequest =
       clientId?: string;
       clientSecret?: string;
     }
-  | { method: "startAuth" };
+  | { method: "startAuth" }
+  | { method: "importExistingRcloneAuth"; sourceConfigPath?: string };
 
 export type IpcResponse<T = unknown> =
   | { ok: true; data: T }
@@ -93,6 +94,13 @@ export interface AuthStatusResult {
   configured: boolean;
   needsReconnect: boolean;
   remoteName: string;
+  message: string;
+}
+
+export interface StartAuthResult {
+  started: boolean;
+  /** Local rclone OAuth URL for Electron to open. */
+  authUrl: string | null;
   message: string;
 }
 

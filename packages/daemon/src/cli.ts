@@ -11,11 +11,15 @@ async function main(): Promise<void> {
   mkdirSync(logsDir(), { recursive: true });
 
   const engine = new SyncEngine();
+  // Recover if a previous shutdown left runState stuck at "stopping"
+  if (engine.store.getRunState() === "stopping") {
+    engine.store.setRunState("running");
+  }
   const server = new IpcServer(engine);
 
   const shutdown = async (signal: string) => {
     console.log(`[${APP_NAME}] shutting down (${signal})`);
-    engine.store.setRunState("stopping");
+    // Do not persist "stopping" — that freezes the next boot.
     engine.stop();
     await server.stop();
     process.exit(0);

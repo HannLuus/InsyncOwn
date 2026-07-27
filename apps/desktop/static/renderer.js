@@ -34,28 +34,35 @@ function formatPair(pair) {
       <button type="button" class="danger" data-act="remove">Remove</button>
     </div>
   `;
-  el.querySelector('[data-act="open"]').onclick = () => insyncown.openPath(pair.localPath);
-  el.querySelector('[data-act="sync"]').onclick = async () => {
-    await insyncown.syncNow(pair.id);
-    await refresh();
-  };
-  el.querySelector('[data-act="resync"]').onclick = async () => {
-    const ok = confirm(
-      "Resync rebuilds the bisync baseline. Continue only if you understand both sides may be reconciled.",
-    );
-    if (!ok) return;
-    await insyncown.resyncPair(pair.id);
-    await refresh();
-  };
-  el.querySelector('[data-act="toggle"]').onclick = async () => {
-    await insyncown.setPairEnabled(pair.id, !pair.enabled);
-    await refresh();
-  };
-  el.querySelector('[data-act="remove"]').onclick = async () => {
-    if (!confirm(`Remove sync pair “${pair.name}”? Local files are kept.`)) return;
-    await insyncown.removePair(pair.id);
-    await refresh();
-  };
+  el.querySelector('[data-act="open"]').onclick = () =>
+    withBusy(el.querySelector('[data-act="open"]'), async () => {
+      await insyncown.openPath(pair.localPath);
+    });
+  el.querySelector('[data-act="sync"]').onclick = () =>
+    withBusy(el.querySelector('[data-act="sync"]'), async () => {
+      await insyncown.syncNow(pair.id);
+      await refresh();
+    });
+  el.querySelector('[data-act="resync"]').onclick = () =>
+    withBusy(el.querySelector('[data-act="resync"]'), async () => {
+      const ok = confirm(
+        "Resync rebuilds the bisync baseline. Continue only if you understand both sides may be reconciled.",
+      );
+      if (!ok) return;
+      await insyncown.resyncPair(pair.id);
+      await refresh();
+    });
+  el.querySelector('[data-act="toggle"]').onclick = () =>
+    withBusy(el.querySelector('[data-act="toggle"]'), async () => {
+      await insyncown.setPairEnabled(pair.id, !pair.enabled);
+      await refresh();
+    });
+  el.querySelector('[data-act="remove"]').onclick = () =>
+    withBusy(el.querySelector('[data-act="remove"]'), async () => {
+      if (!confirm(`Remove sync pair “${pair.name}”? Local files are kept.`)) return;
+      await insyncown.removePair(pair.id);
+      await refresh();
+    });
   return el;
 }
 
@@ -67,12 +74,51 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
+function setActionFeedback(msg) {
+  $("globalError").textContent = msg;
+}
+
+async function withBusy(btn, fn) {
+  if (!window.insyncown) {
+    setActionFeedback("UI bridge missing (preload failed). Restart InsyncOwn.");
+    return;
+  }
+  const el = typeof btn === "string" ? $(btn) : btn;
+  const prev = el ? el.textContent : "";
+  if (el) {
+    el.disabled = true;
+    el.textContent = "Working…";
+  }
+  try {
+    await fn();
+    setActionFeedback("");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    setActionFeedback(msg);
+    console.error(msg);
+  } finally {
+    if (el) {
+      el.disabled = false;
+      el.textContent = prev;
+    }
+  }
+}
+
 async function refresh() {
+  if (!window.insyncown) {
+    $("runState").textContent = "broken";
+    $("runState").className = "pill error";
+    $("authMessage").textContent =
+      "Preload bridge missing — restart the app from the project (npm run start:desktop).";
+    $("authMessage").className = "error";
+    return;
+  }
   try {
     const status = await insyncown.getStatus();
     const run = $("runState");
     run.textContent = status.runState;
     run.className = `pill ${status.runState === "running" ? "ok" : status.runState}`;
+    // Always clear prior UI/transport errors on a successful refresh
     $("globalError").textContent = status.lastGlobalError ?? "";
     const about = status.account.about;
     $("quotaLine").textContent = about
@@ -97,7 +143,7 @@ async function refresh() {
     $("globalError").textContent =
       err instanceof Error ? err.message : String(err);
     $("authMessage").textContent =
-      "Daemon not reachable. Start it with: npm run start:daemon";
+      "Daemon not reachable. Start it with: systemctl --user start insyncown-daemon";
   }
 }
 
@@ -129,59 +175,88 @@ async function loadRemoteRoot() {
 }
 
 function wire() {
-  $("btnPause").onclick = async () => {
-    await insyncown.pause();
-    await refresh();
-  };
-  $("btnResume").onclick = async () => {
-    await insyncown.resume();
-    await refresh();
-  };
-  $("btnSyncAll").onclick = async () => {
-    await insyncown.syncNow();
-    await refresh();
-  };
-  $("btnConnect").onclick = async () => {
-    const r = await insyncown.startAuth();
-    alert(r.message);
-    await refresh();
-  };
-  $("btnRefreshAuth").onclick = () => refresh();
-  $("btnSaveOauth").onclick = async () => {
-    await insyncown.configureAuth($("clientId").value.trim(), $("clientSecret").value.trim());
-    alert("OAuth client saved. Click Connect Google Drive next.");
-  };
+  $("btnPause").onclick = () =>
+    withBusy("btnPause", async () => {
+      await insyncown.pause();
+      await refresh();
+    });
+  $("btnResume").onclick = () =>
+    withBusy("btnResume", async () => {
+      await insyncown.resume();
+      await refresh();
+    });
+  $("btnSyncAll").onclick = () =>
+    withBusy("btnSyncAll", async () => {
+      await insyncown.syncNow();
+      await refresh();
+    });
+  $("btnConnect").onclick = () =>
+    withBusy("btnConnect", async () => {
+      const r = await insyncown.startAuth();
+      setActionFeedback(
+        r.authUrl
+          ? `${r.message} URL: ${r.authUrl}`
+          : r.message,
+      );
+      await refresh();
+    });
+  $("btnImportRclone").onclick = () =>
+    withBusy("btnImportRclone", async () => {
+      const r = await insyncown.importExistingRcloneAuth();
+      setActionFeedback(r.message);
+      await refresh();
+    });
+  $("btnRefreshAuth").onclick = () =>
+    withBusy("btnRefreshAuth", async () => {
+      await refresh();
+    });
+  $("btnSaveOauth").onclick = () =>
+    withBusy("btnSaveOauth", async () => {
+      await insyncown.configureAuth(
+        $("clientId").value.trim(),
+        $("clientSecret").value.trim(),
+      );
+      setActionFeedback("OAuth client saved. Click Connect Google Drive next.");
+    });
   $("btnAddPair").onclick = () => $("addPairCard").classList.remove("hidden");
   $("btnCancelPair").onclick = () => $("addPairCard").classList.add("hidden");
-  $("btnBrowseLocal").onclick = async () => {
-    const path = await insyncown.pickLocalFolder();
-    if (path) $("localPath").value = path;
-  };
-  $("btnBrowseRemote").onclick = () => loadRemoteRoot();
-  $("btnCreatePair").onclick = async () => {
-    const name = $("pairName").value.trim();
-    const localPath = $("localPath").value.trim();
-    const remotePath = $("remotePath").value.trim();
-    if (!name || !localPath || !remotePath) {
-      alert("Name, local path, and remote path are required.");
-      return;
-    }
-    await insyncown.addPair({
-      name,
-      localPath,
-      remotePath,
-      runResync: $("runResync").checked,
+  $("btnBrowseLocal").onclick = () =>
+    withBusy("btnBrowseLocal", async () => {
+      const path = await insyncown.pickLocalFolder();
+      if (path) $("localPath").value = path;
     });
-    $("addPairCard").classList.add("hidden");
-    $("pairName").value = "";
-    $("localPath").value = "";
-    $("remotePath").value = "";
-    await refresh();
-  };
+  $("btnBrowseRemote").onclick = () =>
+    withBusy("btnBrowseRemote", async () => {
+      await loadRemoteRoot();
+    });
+  $("btnCreatePair").onclick = () =>
+    withBusy("btnCreatePair", async () => {
+      const name = $("pairName").value.trim();
+      const localPath = $("localPath").value.trim();
+      const remotePath = $("remotePath").value.trim();
+      if (!name || !localPath || !remotePath) {
+        throw new Error("Name, local path, and remote path are required.");
+      }
+      await insyncown.addPair({
+        name,
+        localPath,
+        remotePath,
+        runResync: $("runResync").checked,
+      });
+      $("addPairCard").classList.add("hidden");
+      $("pairName").value = "";
+      $("localPath").value = "";
+      $("remotePath").value = "";
+      await refresh();
+    });
 
-  void insyncown.getAppInfo().then((info) => {
-    $("appInfo").textContent = `${info.name} ${info.version} · daemon ${info.daemonUrl}`;
-  });
+  if (window.insyncown) {
+    void insyncown.getAppInfo().then((info) => {
+      $("appInfo").textContent = `${info.name} ${info.version} · daemon ${info.daemonUrl}`;
+    });
+  } else {
+    $("appInfo").textContent = "Preload bridge missing";
+  }
 }
 
 wire();
