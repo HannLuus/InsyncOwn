@@ -41,23 +41,12 @@
       {
         "from": "../../packaging/systemd/insyncown-daemon.service",
         "to": "systemd/insyncown-daemon.service"
-      },
-      {
-        "from": "../../packaging/bundle/daemon-bundle",
-        "to": "daemon-bundle"
-      },
-      {
-        "from": "../../packaging/rclone/win",
-        "to": "rclone",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../packaging/windows/scripts",
-        "to": "scripts"
       }
     ],
     "linux": {
-      "target": ["deb"],
+      "target": [
+        "deb"
+      ],
       "artifactName": "InsyncOwn-${version}-amd64.${ext}",
       "category": "Network",
       "executableName": "insyncown",
@@ -69,8 +58,27 @@
       "priority": "optional"
     },
     "win": {
-      "target": ["nsis"],
-      "executableName": "InsyncOwn"
+      "target": [
+        "nsis"
+      ],
+      "executableName": "InsyncOwn",
+      "extraResources": [
+        {
+          "from": "../../packaging/bundle/daemon-bundle",
+          "to": "daemon-bundle"
+        },
+        {
+          "from": "../../packaging/rclone/win",
+          "to": "rclone",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "../../packaging/windows/scripts",
+          "to": "scripts"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,

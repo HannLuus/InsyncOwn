@@ -23,8 +23,14 @@ if (!existsSync(rcloneExe)) {
   run("node", ["scripts/fetch-rclone-windows.mjs"]);
 }
 
+const daemonCli = join(root, "packaging", "bundle", "daemon-bundle", "cli.mjs");
+if (!existsSync(daemonCli)) {
+  console.error("Missing daemon bundle at", daemonCli);
+  process.exit(1);
+}
+
 if (!existsSync(rcloneExe)) {
-  console.error("Missing packaging/rclone/win/rclone.exe after fetch");
+  console.error("Missing rclone.exe at", rcloneExe);
   process.exit(1);
 }
 

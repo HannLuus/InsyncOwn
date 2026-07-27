@@ -18,7 +18,7 @@ function Invoke-DaemonRpc($method, $params = @{}) {
 Write-Host "InsyncOwn Windows smoke test"
 Write-Host "Daemon URL: $DaemonUrl"
 
-$deadline = (Get-Date).AddMinutes(2)
+$deadline = (Get-Date).AddMinutes(3)
 $ready = $false
 while ((Get-Date) -lt $deadline) {
   try {
@@ -31,7 +31,7 @@ while ((Get-Date) -lt $deadline) {
 }
 
 if (-not $ready) {
-  throw "Daemon did not respond to ping within 2 minutes"
+  throw "Daemon did not respond to ping within 3 minutes"
 }
 Write-Host "OK: daemon ping"
 

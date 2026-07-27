@@ -62,12 +62,31 @@ function daemonEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+function usesExternalDaemon(): boolean {
+  if (process.env.INSYNCOWN_EXTERNAL_DAEMON === "1") return true;
+  // Packaged Windows installs register the daemon via Task Scheduler.
+  return process.platform === "win32" && app.isPackaged;
+}
+
 async function ensureDaemon(): Promise<void> {
+  const external = usesExternalDaemon();
+  const maxAttempts = external ? 120 : 40;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    if (await daemon.pingDaemon()) return;
+    if (external) {
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
+    break;
+  }
+
   if (await daemon.pingDaemon()) return;
-  if (process.env.INSYNCOWN_EXTERNAL_DAEMON === "1") {
+
+  if (external) {
     const hint =
       process.platform === "win32"
-        ? "Daemon not reachable. Check Task Scheduler task InsyncOwnDaemon."
+        ? "Daemon not reachable. Check Task Scheduler task InsyncOwnDaemon and %LOCALAPPDATA%\\InsyncOwn\\logs\\daemon.log"
         : "Daemon not reachable. Start: systemctl --user start insyncown-daemon";
     console.error(hint);
     return;
@@ -271,8 +290,8 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   quitting = true;
-  // Leave systemd-managed daemon alone; only kill UI-spawned child.
-  if (daemonProc && !process.env.INSYNCOWN_EXTERNAL_DAEMON) {
+  // Leave systemd / Task Scheduler daemon alone; only kill UI-spawned child.
+  if (daemonProc && !usesExternalDaemon()) {
     daemonProc.kill("SIGTERM");
   }
 });

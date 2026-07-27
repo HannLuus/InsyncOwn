@@ -28,14 +28,16 @@ for (const rel of packagePaths) {
 
 const sharedSrc = join(root, "packages/shared/src/index.ts");
 const sharedText = readFileSync(sharedSrc, "utf8");
+if (!/export const APP_VERSION = "[^"]+";/.test(sharedText)) {
+  console.error("sync-version: APP_VERSION line not found in shared/src/index.ts");
+  process.exit(1);
+}
 const nextShared = sharedText.replace(
   /export const APP_VERSION = "[^"]+";/,
   `export const APP_VERSION = "${version}";`,
 );
-if (nextShared === sharedText) {
-  console.error("sync-version: APP_VERSION line not found in shared/src/index.ts");
-  process.exit(1);
+if (nextShared !== sharedText) {
+  writeFileSync(sharedSrc, nextShared, "utf8");
 }
-writeFileSync(sharedSrc, nextShared, "utf8");
 
 console.log(`Synced version ${version}`);

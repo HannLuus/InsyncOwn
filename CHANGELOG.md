@@ -15,6 +15,15 @@ Install the **highest version number** from [GitHub Releases](https://github.com
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows-only `extraResources` no longer break Linux `.deb` CI builds
+- Packaged Windows UI waits for Task Scheduler daemon instead of spawning a duplicate
+- NSIS installer aborts when service/autostart registration fails
+- Daemon install script validates bundled `rclone.exe` and uses reliable log append
+- Release workflow title no longer doubles the `v` prefix (`InsyncOwn v0.1.1`)
+- `npm run build` no longer fails when version is already synced
+
 ### Added
 
 - Windows port: NSIS installer (`InsyncOwn-<version>-win64.exe`), bundled daemon + rclone.exe, Task Scheduler daemon, CI build workflow

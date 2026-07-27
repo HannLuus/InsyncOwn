@@ -83,6 +83,7 @@ jobs:
         run: npm run pack:nsis
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          RCLONE_VERSION: "1.74.4"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -103,7 +104,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: InsyncOwn v${{ github.ref_name }}
+          name: InsyncOwn ${{ github.ref_name }}
           files: |
             release-artifacts/**/*.deb
             release-artifacts/**/*.exe
