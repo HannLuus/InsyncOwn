@@ -1,4 +1,4 @@
-name: Build Debian
+name: Build Windows
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  deb:
-    name: Ubuntu/Debian .deb
-    runs-on: ubuntu-24.04
+  nsis:
+    name: Windows NSIS installer
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,22 +21,20 @@ jobs:
 
       - name: Read version
         id: ver
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        shell: pwsh
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> $env:GITHUB_OUTPUT
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
-
-      - name: Package .deb
-        run: npm run pack:deb -w insyncown
+      - name: Build and package
+        run: npm run pack:nsis
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload .deb (CI only — install from GitHub Releases)
+      - name: Upload installer (CI only — install from GitHub Releases)
         uses: actions/upload-artifact@v4
         with:
-          name: InsyncOwn-${{ steps.ver.outputs.version }}-amd64-deb
-          path: release/InsyncOwn-*.deb
+          name: InsyncOwn-${{ steps.ver.outputs.version }}-win64-installer
+          path: release/InsyncOwn-*-win64.exe
           if-no-files-found: error

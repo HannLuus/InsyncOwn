@@ -1,0 +1,45 @@
+# Changelog
+
+All notable InsyncOwn releases are listed here. Version numbers use [Semantic Versioning](https://semver.org/).
+
+## How to read versions
+
+- **0.1.x** — early dogfood builds; expect changes
+- **Patch** (0.1.0 → 0.1.1) — bug fixes, reliability
+- **Minor** (0.1.x → 0.2.0) — new features, still pre-1.0
+- **Major** (1.0.0) — first stable “customer ready” release
+
+Install the **highest version number** from [GitHub Releases](https://github.com/HannLuus/InsyncOwn/releases). Delete older `InsyncOwn-*-amd64.deb` files from Downloads after installing.
+
+---
+
+## [Unreleased]
+
+### Added
+
+- Windows port: NSIS installer (`InsyncOwn-<version>-win64.exe`), bundled daemon + rclone.exe, Task Scheduler daemon, CI build workflow
+- OS-specific config paths (`%APPDATA%` / `%LOCALAPPDATA%` on Windows)
+- [docs/WINDOWS.md](docs/WINDOWS.md) install guide and smoke test script
+
+---
+
+## [0.1.1] - 2026-07-27
+
+### Fixed
+
+- OAuth / Google login flow (browser auth, own OAuth client support)
+- Bisync stale lock recovery and dangling Google Drive shortcut handling
+- Electron UI resilience (daemon reconnect, clear stale errors, GPU disable)
+
+---
+
+## [0.1.0] - 2026-07-26
+
+### Added
+
+- Initial InsyncOwn: Electron tray UI, sync daemon, rclone bisync pairs
+- systemd user service and `.deb` packaging
+- Dogfood docs and import from existing rclone auth
+
+[0.1.1]: https://github.com/HannLuus/InsyncOwn/releases/tag/v0.1.1
+[0.1.0]: https://github.com/HannLuus/InsyncOwn/releases/tag/v0.1.0

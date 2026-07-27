@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    name: Publish Linux .deb
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Read version
+        id: ver
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches package.json
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG="${{ steps.ver.outputs.version }}"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "Tag v$TAG does not match package.json version $PKG"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        run: npm run pack:deb
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InsyncOwn-${{ steps.ver.outputs.version }}-amd64-deb
+          path: release/InsyncOwn-*-amd64.deb
+
+  win:
+    name: Publish Windows installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> $env:GITHUB_OUTPUT
+
+      - name: Verify tag matches package.json
+        shell: pwsh
+        run: |
+          $tag = "$env:GITHUB_REF" -replace 'refs/tags/v',''
+          $pkg = "${{ steps.ver.outputs.version }}"
+          if ($tag -ne $pkg) {
+            throw "Tag v$tag does not match package.json version $pkg"
+          }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        run: npm run pack:nsis
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InsyncOwn-${{ steps.ver.outputs.version }}-win64-installer
+          path: release/InsyncOwn-*-win64.exe
+
+  publish:
+    name: Create GitHub Release
+    needs: [deb, win]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: InsyncOwn v${{ github.ref_name }}
+          files: |
+            release-artifacts/**/*.deb
+            release-artifacts/**/*.exe
+          generate_release_notes: true

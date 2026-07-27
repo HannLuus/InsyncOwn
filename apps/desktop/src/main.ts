@@ -26,8 +26,8 @@ function staticPath(...parts: string[]): string {
 }
 
 function daemonEntry(): string {
-  // Dev: workspace package. Packaged: extraResources.
   const candidates = [
+    join(process.resourcesPath, "daemon-bundle", "cli.mjs"),
     join(app.getAppPath(), "..", "..", "packages", "daemon", "dist", "cli.js"),
     join(process.resourcesPath, "daemon", "cli.js"),
     join(__dirname, "..", "..", "..", "packages", "daemon", "dist", "cli.js"),
@@ -38,12 +38,38 @@ function daemonEntry(): string {
   return candidates[0];
 }
 
+function insyncOwnDataDir(): string {
+  if (process.platform === "win32") {
+    const local = process.env.LOCALAPPDATA;
+    if (local) return join(local, "InsyncOwn");
+    return join(app.getPath("home"), "AppData", "Local", "InsyncOwn");
+  }
+  return join(app.getPath("home"), ".local", "share", "insyncown");
+}
+
+function daemonEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+  };
+  if (process.resourcesPath) {
+    env.INSYNCOWN_RESOURCES = process.resourcesPath;
+    const bundledRclone = join(process.resourcesPath, "rclone", "rclone.exe");
+    if (existsSync(bundledRclone)) {
+      env.INSYNCOWN_RCLONE = bundledRclone;
+    }
+  }
+  return env;
+}
+
 async function ensureDaemon(): Promise<void> {
   if (await daemon.pingDaemon()) return;
   if (process.env.INSYNCOWN_EXTERNAL_DAEMON === "1") {
-    console.error(
-      "Daemon not reachable. Start: systemctl --user start insyncown-daemon",
-    );
+    const hint =
+      process.platform === "win32"
+        ? "Daemon not reachable. Check Task Scheduler task InsyncOwnDaemon."
+        : "Daemon not reachable. Start: systemctl --user start insyncown-daemon";
+    console.error(hint);
     return;
   }
   const entry = daemonEntry();
@@ -51,11 +77,9 @@ async function ensureDaemon(): Promise<void> {
     console.error("Daemon entry not found:", entry);
     return;
   }
-  mkdirSync(join(app.getPath("home"), ".local", "share", "insyncown"), {
-    recursive: true,
-  });
+  mkdirSync(insyncOwnDataDir(), { recursive: true });
   daemonProc = spawn(process.execPath, [entry], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    env: daemonEnv(),
     stdio: "ignore",
     detached: false,
   });
