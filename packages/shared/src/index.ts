@@ -47,9 +47,23 @@ export interface DaemonStatus {
   runState: DaemonRunState;
   rclonePath: string;
   configDir: string;
+  network: NetworkSettings;
   account: AccountInfo;
   pairs: SyncPair[];
   lastGlobalError: string | null;
+}
+
+export interface NetworkSettings {
+  /** e.g. socks5://127.0.0.1:1080 or http://127.0.0.1:7890 */
+  proxyUrl: string | null;
+  /** Comma-separated hosts that bypass the proxy (localhost OAuth listener). */
+  noProxy: string | null;
+}
+
+export interface NetworkTestResult {
+  ok: boolean;
+  message: string;
+  proxyConfigured: boolean;
 }
 
 export interface RemoteFolder {
@@ -84,7 +98,10 @@ export type IpcRequest =
       clientSecret?: string;
     }
   | { method: "startAuth" }
-  | { method: "importExistingRcloneAuth"; sourceConfigPath?: string };
+  | { method: "importExistingRcloneAuth"; sourceConfigPath?: string }
+  | { method: "getNetworkSettings" }
+  | { method: "setNetworkSettings"; proxyUrl?: string | null; noProxy?: string | null }
+  | { method: "testNetwork" };
 
 export type IpcResponse<T = unknown> =
   | { ok: true; data: T }

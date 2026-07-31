@@ -130,6 +130,14 @@ async function refresh() {
     $("authMessage").textContent = auth.message;
     $("authMessage").className = auth.configured ? "status-ok" : "error";
 
+    if (status.network) {
+      $("proxyUrl").value = status.network.proxyUrl ?? "";
+      $("noProxy").value = status.network.noProxy ?? "127.0.0.1,localhost";
+      $("networkStatus").textContent = status.network.proxyUrl
+        ? `Active: ${status.network.proxyUrl}`
+        : "No proxy — sync uses your normal network route.";
+    }
+
     const pairs = $("pairs");
     pairs.innerHTML = "";
     if (!status.pairs.length) {
@@ -217,6 +225,32 @@ function wire() {
         $("clientSecret").value.trim(),
       );
       setActionFeedback("OAuth client saved. Click Connect Google Drive next.");
+    });
+  $("btnSaveProxy").onclick = () =>
+    withBusy("btnSaveProxy", async () => {
+      const r = await insyncown.setNetworkSettings({
+        proxyUrl: $("proxyUrl").value.trim() || null,
+        noProxy: $("noProxy").value.trim() || "127.0.0.1,localhost",
+      });
+      $("networkStatus").textContent = r.message ?? "Proxy saved.";
+      setActionFeedback(r.message ?? "Proxy saved.");
+      await refresh();
+    });
+  $("btnClearProxy").onclick = () =>
+    withBusy("btnClearProxy", async () => {
+      $("proxyUrl").value = "";
+      const r = await insyncown.setNetworkSettings({
+        proxyUrl: null,
+        noProxy: $("noProxy").value.trim() || "127.0.0.1,localhost",
+      });
+      $("networkStatus").textContent = r.message ?? "Proxy cleared.";
+      await refresh();
+    });
+  $("btnTestNetwork").onclick = () =>
+    withBusy("btnTestNetwork", async () => {
+      const r = await insyncown.testNetwork();
+      $("networkStatus").textContent = r.message;
+      $("networkStatus").className = r.ok ? "status-ok" : "error";
     });
   $("btnAddPair").onclick = () => $("addPairCard").classList.remove("hidden");
   $("btnCancelPair").onclick = () => $("addPairCard").classList.add("hidden");

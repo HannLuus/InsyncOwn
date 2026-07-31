@@ -50,6 +50,38 @@
         <p id="quotaLine" class="muted"></p>
       </section>
 
+      <section class="card" id="networkCard">
+        <h2>Network / proxy</h2>
+        <p class="muted">
+          Route <strong>only InsyncOwn sync</strong> through a proxy — no system-wide VPN needed.
+          Use when Google APIs are blocked locally (e.g. Myanmar) but other apps must stay direct.
+        </p>
+        <label>
+          Proxy URL
+          <input
+            id="proxyUrl"
+            type="text"
+            placeholder="socks5://127.0.0.1:1080"
+            spellcheck="false"
+          />
+        </label>
+        <label>
+          No proxy (comma-separated)
+          <input
+            id="noProxy"
+            type="text"
+            placeholder="127.0.0.1,localhost"
+            spellcheck="false"
+          />
+        </label>
+        <div class="row wrap">
+          <button id="btnSaveProxy" type="button">Save proxy</button>
+          <button id="btnClearProxy" type="button" class="secondary">Clear proxy</button>
+          <button id="btnTestNetwork" type="button" class="secondary">Test Google Drive</button>
+        </div>
+        <p id="networkStatus" class="muted"></p>
+      </section>
+
       <section class="card">
         <div class="row between">
           <h2>Sync pairs</h2>

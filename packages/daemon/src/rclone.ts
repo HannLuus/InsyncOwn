@@ -7,6 +7,7 @@ import {
   type RemoteFolder,
 } from "@insyncown/shared";
 import { rcloneConfigPath, resolveRclonePath, bisyncWorkDir } from "./paths.js";
+import { rcloneSpawnEnv } from "./rclone-env.js";
 
 export interface RcloneRunResult {
   code: number;
@@ -39,7 +40,7 @@ export class RcloneClient {
     const timeoutMs = opts?.timeoutMs ?? 30 * 60 * 1000;
     return new Promise((resolve, reject) => {
       const child = spawn(this.bin, [...this.baseArgs(), ...args], {
-        env: { ...process.env },
+        env: rcloneSpawnEnv(),
         stdio: ["ignore", "pipe", "pipe"],
       });
       let stdout = "";

@@ -8,6 +8,8 @@ import {
   type RemoteFolder,
   type StartAuthResult,
   type SyncPair,
+  type NetworkSettings,
+  type NetworkTestResult,
 } from "@insyncown/shared";
 
 const host = process.env.INSYNCOWN_DAEMON_HOST ?? DAEMON_DEFAULT_HOST;
@@ -121,6 +123,23 @@ export function syncNow(id?: string): Promise<unknown> {
 
 export function resyncPair(id: string): Promise<unknown> {
   return rpc({ method: "resyncPair", id });
+}
+
+export function getNetworkSettings(): Promise<
+  NetworkSettings & { proxyUrlDisplay?: string | null; envOverride?: boolean }
+> {
+  return rpc({ method: "getNetworkSettings" });
+}
+
+export function setNetworkSettings(input: {
+  proxyUrl?: string | null;
+  noProxy?: string | null;
+}): Promise<NetworkSettings & { message?: string }> {
+  return rpc({ method: "setNetworkSettings", ...input });
+}
+
+export function testNetwork(): Promise<NetworkTestResult> {
+  return rpc({ method: "testNetwork" });
 }
 
 export function daemonBaseUrl(): string {

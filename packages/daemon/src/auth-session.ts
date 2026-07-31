@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { RCLONE_REMOTE_NAME } from "@insyncown/shared";
 import { rcloneConfigPath, resolveRclonePath } from "./paths.js";
+import { rcloneSpawnEnv } from "./rclone-env.js";
 
 export interface StartAuthResult {
   started: boolean;
@@ -66,7 +67,7 @@ export class AuthSession {
         "--auto-confirm",
       ];
       const child = spawn(this.bin, args, {
-        env: { ...process.env },
+        env: rcloneSpawnEnv(),
         stdio: ["ignore", "pipe", "pipe"],
       });
       this.child = child;

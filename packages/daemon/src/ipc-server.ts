@@ -12,6 +12,12 @@ import {
 import type { SyncEngine } from "./sync-engine.js";
 import { AuthSession } from "./auth-session.js";
 import { defaultRcloneImportPath } from "./paths.js";
+import {
+  loadNetworkSettings,
+  maskProxyUrl,
+  saveNetworkSettings,
+} from "./network-settings.js";
+import type { NetworkTestResult } from "@insyncown/shared";
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -208,6 +214,71 @@ export class IpcServer {
           configured: this.engine.rclone.isRemoteConfigured(),
           message: "Imported existing rclone Google Drive login.",
         };
+      }
+      case "getNetworkSettings": {
+        const settings = loadNetworkSettings();
+        return {
+          ...settings,
+          proxyUrlDisplay: maskProxyUrl(settings.proxyUrl),
+          envOverride: Boolean(process.env.INSYNCOWN_PROXY?.trim()),
+        };
+      }
+      case "setNetworkSettings": {
+        if (process.env.INSYNCOWN_PROXY?.trim()) {
+          throw new Error(
+            "Proxy is locked by INSYNCOWN_PROXY in the environment. Remove it from systemd to use UI settings.",
+          );
+        }
+        const saved = saveNetworkSettings({
+          proxyUrl: request.proxyUrl ?? null,
+          noProxy: request.noProxy ?? "127.0.0.1,localhost",
+        });
+        return {
+          ...saved,
+          proxyUrlDisplay: maskProxyUrl(saved.proxyUrl),
+          message: saved.proxyUrl
+            ? "Proxy saved. Only InsyncOwn sync traffic will use it."
+            : "Proxy cleared. Sync uses your normal network route.",
+        };
+      }
+      case "testNetwork": {
+        const settings = loadNetworkSettings();
+        const result: NetworkTestResult = {
+          ok: false,
+          message: "",
+          proxyConfigured: Boolean(settings.proxyUrl),
+        };
+        if (!this.engine.rclone.isRemoteConfigured()) {
+          result.message =
+            "Google Drive is not connected yet. Connect first, then test again.";
+          return result;
+        }
+        try {
+          const about = await Promise.race([
+            this.engine.rclone.about(),
+            new Promise<null>((_, reject) =>
+              setTimeout(() => reject(new Error("Timed out after 15s")), 15_000),
+            ),
+          ]);
+          if (about) {
+            result.ok = true;
+            result.message = settings.proxyUrl
+              ? `Reachable via proxy (${maskProxyUrl(settings.proxyUrl)}). Used ${about.used ?? "?"} of ${about.total ?? "?"}`
+              : `Reachable without proxy. Used ${about.used ?? "?"} of ${about.total ?? "?"}`;
+          } else {
+            result.message = "Connected but quota lookup returned no data.";
+          }
+        } catch (err) {
+          result.message =
+            err instanceof Error ? err.message : String(err);
+          if (settings.proxyUrl) {
+            result.message += " — check proxy is running and the URL is correct.";
+          } else {
+            result.message +=
+              " — if Google is blocked locally, set a proxy below (SOCKS5 or HTTP).";
+          }
+        }
+        return result;
       }
       default: {
         const _exhaustive: never = request;

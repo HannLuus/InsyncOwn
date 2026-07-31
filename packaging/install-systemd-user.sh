@@ -30,6 +30,9 @@ RestartSec=5
 Environment=PATH=${HOME}/bin:/usr/local/bin:/usr/bin:/bin
 Environment=INSYNCOWN_EXTERNAL_DAEMON=1
 Environment=INSYNCOWN_RCLONE=${HOME}/bin/rclone
+# Optional: route only InsyncOwn sync through a local proxy (see docs/NETWORK-PROXY.md)
+# Environment=INSYNCOWN_PROXY=socks5://127.0.0.1:1080
+# Environment=INSYNCOWN_NO_PROXY=127.0.0.1,localhost
 
 [Install]
 WantedBy=default.target

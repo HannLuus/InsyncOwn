@@ -7,6 +7,7 @@ import { RcloneClient } from "./rclone.js";
 import { clearStaleBisyncLocks, summarizeRcloneFailure } from "./rclone-utils.js";
 import { StateStore } from "./state.js";
 import { bisyncWorkDir, configDir, resolveRclonePath } from "./paths.js";
+import { loadNetworkSettings } from "./network-settings.js";
 
 const POLL_MS = 2 * 60 * 1000;
 const DEBOUNCE_MS = 8_000;
@@ -56,6 +57,7 @@ export class SyncEngine {
       runState: this.store.getRunState(),
       rclonePath: resolveRclonePath(),
       configDir: configDir(),
+      network: loadNetworkSettings(),
       account: {
         configured: this.rclone.isRemoteConfigured(),
         remoteName: RCLONE_REMOTE_NAME,

@@ -142,10 +142,19 @@ function createWindow(): void {
 }
 
 function trayIcon(): Electron.NativeImage {
-  const iconPath = staticPath("icons", "tray.png");
-  if (existsSync(iconPath)) {
+  // Prefer hi-DPI tray asset (Plasma/GNOME scale it down cleanly).
+  const candidates = [
+    staticPath("icons", "tray@2x.png"),
+    staticPath("icons", "tray.png"),
+    staticPath("icons", "icon-256.png"),
+  ];
+  for (const iconPath of candidates) {
+    if (!existsSync(iconPath)) continue;
     const img = nativeImage.createFromPath(iconPath);
-    if (!img.isEmpty()) return img;
+    if (img.isEmpty()) continue;
+    // Keep tray compact; Plasma often expects ~22–48 CSS px.
+    const size = process.platform === "linux" ? 48 : 32;
+    return img.resize({ width: size, height: size, quality: "best" });
   }
   // Fallback: generated 16x16 blue square
   const size = 16;
@@ -269,6 +278,13 @@ function registerIpc(): void {
   );
   ipcMain.handle("daemon:syncNow", (_e, id?: string) => daemon.syncNow(id));
   ipcMain.handle("daemon:resyncPair", (_e, id: string) => daemon.resyncPair(id));
+  ipcMain.handle("daemon:getNetworkSettings", () => daemon.getNetworkSettings());
+  ipcMain.handle(
+    "daemon:setNetworkSettings",
+    (_e, input: { proxyUrl?: string | null; noProxy?: string | null }) =>
+      daemon.setNetworkSettings(input),
+  );
+  ipcMain.handle("daemon:testNetwork", () => daemon.testNetwork());
   ipcMain.handle("dialog:pickLocalFolder", async () => {
     const result = await dialog.showOpenDialog({
       properties: ["openDirectory", "createDirectory"],
