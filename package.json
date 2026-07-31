@@ -27,7 +27,8 @@
     "pack:win": "npm run build && node scripts/prepare-windows-pack.mjs && npm run pack:nsis -w insyncown",
     "pack:nsis": "npm run build && node scripts/prepare-windows-pack.mjs && npm run pack:nsis -w insyncown",
     "install:systemd": "bash packaging/install-systemd-user.sh",
-    "install:desktop": "bash packaging/install-desktop-autostart.sh"
+    "install:desktop": "bash packaging/install-desktop-autostart.sh",
+    "install:vps-socks": "bash packaging/install-vps-socks-tunnel.sh"
   },
   "engines": {
     "node": ">=20"

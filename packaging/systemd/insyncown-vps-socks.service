@@ -1,0 +1,14 @@
+[Unit]
+Description=InsyncOwn VPS SOCKS proxy (Google sync only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/.config/insyncown-vps-socks.env
+ExecStart=%h/.local/bin/insyncown-vps-socks.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

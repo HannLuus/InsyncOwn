@@ -13,6 +13,34 @@ Your apps  ───────────────────────
 InsyncOwn  ──► local proxy ──► VPN/tunnel ──► Google Drive
 ```
 
+## Your VPS + Outline setup (this machine)
+
+InsyncOwn can use the **same Hostinger VPS** as Outline without turning on system VPN:
+
+```bash
+cd ~/projects/InsyncOwn
+bash packaging/install-vps-socks-tunnel.sh
+```
+
+This installs:
+
+| Piece | What it does |
+|-------|----------------|
+| `insyncown-vps-socks.service` | SSH SOCKS5 on `127.0.0.1:1080` → VPS |
+| `~/.config/insyncown/network.json` | Tells InsyncOwn to use that proxy only |
+| Daemon restart | Sync traffic goes through VPS; other apps stay direct |
+
+**Turn off Outline client** for daily use if you only need Google sync — the SOCKS tunnel is enough.
+
+Check status:
+
+```bash
+systemctl --user status insyncown-vps-socks
+systemctl --user status insyncown-daemon
+```
+
+---
+
 ## Recommended setup (Myanmar)
 
 ### Option A — VPN with a local SOCKS port (best if your VPN supports it)
