@@ -1,6 +1,6 @@
 {
   "name": "insyncown",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Sellable Google Drive selective two-way sync for Linux and Windows",
   "workspaces": [

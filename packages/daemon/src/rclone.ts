@@ -8,6 +8,7 @@ import {
 } from "@insyncown/shared";
 import { rcloneConfigPath, resolveRclonePath, bisyncWorkDir } from "./paths.js";
 import { rcloneSpawnEnv } from "./rclone-env.js";
+import { getExcludePatternsForPair, writeExcludeFileForWorkdir } from "./filter-rules.js";
 
 export interface RcloneRunResult {
   code: number;
@@ -169,6 +170,9 @@ export class RcloneClient {
       ? opts.remotePath
       : `${this.remoteName}:${opts.remotePath.replace(/^\/+/, "")}`;
 
+    const excludePatterns = getExcludePatternsForPair(opts.localPath);
+    const excludeFile = writeExcludeFileForWorkdir(opts.workdir, excludePatterns);
+
     const args = [
       "bisync",
       opts.localPath,
@@ -189,6 +193,8 @@ export class RcloneClient {
       "insyncown-conflict-{DateOnly}-",
       "--workdir",
       opts.workdir,
+      "--exclude-from",
+      excludeFile,
       // Prevent eternal locks after crashes (Media bug: expiry year 2226)
       "--max-lock",
       "10m",

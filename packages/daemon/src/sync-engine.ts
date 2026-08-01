@@ -8,6 +8,7 @@ import { clearStaleBisyncLocks, summarizeRcloneFailure } from "./rclone-utils.js
 import { StateStore } from "./state.js";
 import { bisyncWorkDir, configDir, resolveRclonePath } from "./paths.js";
 import { loadNetworkSettings } from "./network-settings.js";
+import { createChokidarIgnoredFilter } from "./filter-rules.js";
 
 const POLL_MS = 2 * 60 * 1000;
 const DEBOUNCE_MS = 8_000;
@@ -148,12 +149,7 @@ export class SyncEngine {
     const watcher = chokidar.watch(pair.localPath, {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 1500, pollInterval: 200 },
-      ignored: [
-        /(^|[/\\])\../,
-        /\.insyncown-conflict-/,
-        /\.tmp$/i,
-        /~$/,
-      ],
+      ignored: createChokidarIgnoredFilter(pair.localPath),
     });
     const schedule = () => this.scheduleSync(pair.id);
     watcher.on("add", schedule);

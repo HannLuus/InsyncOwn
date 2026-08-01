@@ -122,5 +122,5 @@ export interface StartAuthResult {
 }
 
 export const APP_NAME = "InsyncOwn";
-export const APP_VERSION = "0.1.2";
+export const APP_VERSION = "0.1.3";
 export const RCLONE_REMOTE_NAME = "gdrive";

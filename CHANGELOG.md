@@ -13,29 +13,19 @@ Install the **highest version number** from [GitHub Releases](https://github.com
 
 ---
 
-## [Unreleased]
+## [0.1.3] - 2026-08-01
 
 ### Fixed
 
-- Windows-only `extraResources` no longer break Linux `.deb` CI builds
-- Packaged Windows UI waits for Task Scheduler daemon instead of spawning a duplicate
-- NSIS installer aborts when service/autostart registration fails
-- Daemon install script validates bundled `rclone.exe` and uses reliable log append
-- Release workflow title no longer doubles the `v` prefix (`InsyncOwn v0.1.1`)
-- `npm run build` no longer fails when version is already synced
-- Desktop entries no longer use the file-manager `folder-remote` icon
+- Project folder sync performance: added default exclude rules (`node_modules`, `.git`, `.venv`, `dist`, `build`, `.next`, `target`, `__pycache__`, temp/lock files) and `.insyncignore` support for `rclone bisync` and `chokidar` file watcher.
 
 ### Added
 
-- App identity: real InsyncOwn icon (sync-loop + folder) for launcher, window, tray, and installers
-- Self-contained Linux `.deb`: bundled daemon, systemd user unit installed to `/usr/lib/systemd/user/`, `rclone` as Recommends, chrome-sandbox SUID fix in postinst
-- Windows port: NSIS installer (`InsyncOwn-<version>-win64.exe`), bundled daemon + rclone.exe, Task Scheduler daemon, CI build workflow
-- OS-specific config paths (`%APPDATA%` / `%LOCALAPPDATA%` on Windows)
-- [docs/WINDOWS.md](docs/WINDOWS.md) install guide and smoke test script
+- VPS SOCKS tunnel installer and per-app proxy routing for restricted networks.
 
 ---
 
-## [0.1.1] - 2026-07-27
+## [0.1.2] - 2026-07-27
 
 ### Fixed
 
@@ -53,5 +43,7 @@ Install the **highest version number** from [GitHub Releases](https://github.com
 - systemd user service and `.deb` packaging
 - Dogfood docs and import from existing rclone auth
 
+[0.1.3]: https://github.com/HannLuus/InsyncOwn/releases/tag/v0.1.3
+[0.1.2]: https://github.com/HannLuus/InsyncOwn/releases/tag/v0.1.2
 [0.1.1]: https://github.com/HannLuus/InsyncOwn/releases/tag/v0.1.1
 [0.1.0]: https://github.com/HannLuus/InsyncOwn/releases/tag/v0.1.0
